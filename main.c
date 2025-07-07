@@ -6,7 +6,7 @@
 int main(void)
 {
   CHIP_Init();
-  initIADC_PC09();  // Używasz PC08 zgodnie z wcześniejszą rozmową
+  initIADC_PC09();
   uart_init();
 
   char buffer[64];
