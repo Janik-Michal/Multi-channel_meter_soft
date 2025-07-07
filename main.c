@@ -6,21 +6,19 @@
 int main(void)
 {
   CHIP_Init();
-  initIADC_PC09();
+  initIADC_PC09();  // Używasz PC08 zgodnie z wcześniejszą rozmową
   uart_init();
 
-  char buffer[64];  // bufor na sformatowany tekst
+  char buffer[64];
 
-    while (1) {
-      uint32_t mv = iadc_read_mv();  // odczyt ADC w mV
+  while (1) {
+    // Sformatuj z dwoma miejscami po przecinku
+    sprintf(buffer, "Temp: %.2f C\r\n", iadc_read_temperature_celsius());
 
-      // konwersja liczby do stringa
-      sprintf(buffer, "ADC: %lu mV\r\n", mv);
+    // Wyślij przez UART
+    uart_send_string(buffer);
+    for (volatile int i = 0; i < 1000000; i++);
+  }
+}
 
-      // wyślij string przez UART
-      uart_send_string(buffer);
 
-      // prosty delay
-      for (volatile int i = 0; i < 500000; i++);
-    }
- }
