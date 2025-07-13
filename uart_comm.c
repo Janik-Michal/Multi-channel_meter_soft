@@ -15,18 +15,18 @@ void uart_init(void)
   // PA6 jako RX (z RS-485)
   // PA4 jako DIR (DE - kierunek transmisji)
 
-  GPIO_PinModeSet(gpioPortA, 5, gpioModePushPull, 1);  // TX (PA5)
-  GPIO_PinModeSet(gpioPortA, 6, gpioModeInput, 0);     // RX (PA6)
-  GPIO_PinModeSet(gpioPortA, 4, gpioModePushPull, 0);  // DIR (DE) domyślnie odbiór
+//  GPIO_PinModeSet(gpioPortA, 5, gpioModePushPull, 1);  // TX (PA5)
+//  GPIO_PinModeSet(gpioPortA, 6, gpioModeInput, 0);     // RX (PA6)
+//  GPIO_PinModeSet(gpioPortA, 4, gpioModePushPull, 0);  // DIR (DE) domyślnie odbiór
 
-  /*
+
   // ===== Alternatywna konfiguracja pinów dla konwertera USB UART (np. FTDI) =====
   // PA6 jako TX
   // PA5 jako RX
 
   GPIO_PinModeSet(gpioPortA, 6, gpioModePushPull, 1);  // TX (PA6)
   GPIO_PinModeSet(gpioPortA, 5, gpioModeInput, 0);     // RX (PA5)
-  */
+
 
   // Inicjalizacja USART w trybie asynchronicznym (8N1)
   USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
@@ -34,22 +34,21 @@ void uart_init(void)
   USART_InitAsync(UART, &init);
 
   // ===== Routing USART do pinów RS-485 (obecne) =====
-  GPIO->USARTROUTE[0].TXROUTE = (gpioPortA << _GPIO_USART_TXROUTE_PORT_SHIFT) |
-                                (5 << _GPIO_USART_TXROUTE_PIN_SHIFT);  // PA5 = TX
-  GPIO->USARTROUTE[0].RXROUTE = (gpioPortA << _GPIO_USART_RXROUTE_PORT_SHIFT) |
-                                (6 << _GPIO_USART_RXROUTE_PIN_SHIFT);  // PA6 = RX
+//  GPIO->USARTROUTE[0].TXROUTE = (gpioPortA << _GPIO_USART_TXROUTE_PORT_SHIFT) |
+//                                (5 << _GPIO_USART_TXROUTE_PIN_SHIFT);  // PA5 = TX
+//  GPIO->USARTROUTE[0].RXROUTE = (gpioPortA << _GPIO_USART_RXROUTE_PORT_SHIFT) |
+//                                (6 << _GPIO_USART_RXROUTE_PIN_SHIFT);  // PA6 = RX
 
-  /*
+
   // ===== Alternatywny routing dla konwertera USB =====
   GPIO->USARTROUTE[0].TXROUTE = (gpioPortA << _GPIO_USART_TXROUTE_PORT_SHIFT) |
                                 (6 << _GPIO_USART_TXROUTE_PIN_SHIFT);  // PA6 = TX
   GPIO->USARTROUTE[0].RXROUTE = (gpioPortA << _GPIO_USART_RXROUTE_PORT_SHIFT) |
                                 (5 << _GPIO_USART_RXROUTE_PIN_SHIFT);  // PA5 = RX
-  */
+
 
   GPIO->USARTROUTE[0].ROUTEEN = GPIO_USART_ROUTEEN_RXPEN | GPIO_USART_ROUTEEN_TXPEN;
 }
-
 
 
 void uart_send_byte(uint8_t data)

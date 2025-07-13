@@ -28,6 +28,7 @@ component:
 - {id: EFM32PG23B310F512IM48}
 - {id: clock_manager}
 - {id: device_init}
+- {id: emlib_i2c}
 - {id: emlib_iadc}
 - {id: emlib_usart}
 - {id: sl_main}

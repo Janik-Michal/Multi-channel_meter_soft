@@ -136,6 +136,11 @@
 			<locationURI>STUDIO_SDK_LOC/platform/emlib/inc/em_gpio.h</locationURI>
 		</link>
 		<link>
+			<name>simplicity_sdk_2025.6.0/platform/emlib/inc/em_i2c.h</name>
+			<type>1</type>
+			<locationURI>STUDIO_SDK_LOC/platform/emlib/inc/em_i2c.h</locationURI>
+		</link>
+		<link>
 			<name>simplicity_sdk_2025.6.0/platform/emlib/inc/em_iadc.h</name>
 			<type>1</type>
 			<locationURI>STUDIO_SDK_LOC/platform/emlib/inc/em_iadc.h</locationURI>
@@ -199,6 +204,11 @@
 			<name>simplicity_sdk_2025.6.0/platform/emlib/src/em_gpio.c</name>
 			<type>1</type>
 			<locationURI>STUDIO_SDK_LOC/platform/emlib/src/em_gpio.c</locationURI>
+		</link>
+		<link>
+			<name>simplicity_sdk_2025.6.0/platform/emlib/src/em_i2c.c</name>
+			<type>1</type>
+			<locationURI>STUDIO_SDK_LOC/platform/emlib/src/em_i2c.c</locationURI>
 		</link>
 		<link>
 			<name>simplicity_sdk_2025.6.0/platform/emlib/src/em_iadc.c</name>
