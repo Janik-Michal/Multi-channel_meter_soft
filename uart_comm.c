@@ -33,7 +33,7 @@ void uart_init(void)
   init.baudrate = 115200;
   USART_InitAsync(UART, &init);
 
-  // ===== Routing USART do pinów RS-485 (obecne) =====
+  // ===== Routing USART do pinów RS-485  =====
 //  GPIO->USARTROUTE[0].TXROUTE = (gpioPortA << _GPIO_USART_TXROUTE_PORT_SHIFT) |
 //                                (5 << _GPIO_USART_TXROUTE_PIN_SHIFT);  // PA5 = TX
 //  GPIO->USARTROUTE[0].RXROUTE = (gpioPortA << _GPIO_USART_RXROUTE_PORT_SHIFT) |
