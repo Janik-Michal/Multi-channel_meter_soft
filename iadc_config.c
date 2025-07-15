@@ -23,12 +23,11 @@ volatile bool newScanReady = false;
 
 void initIADC(void)
 {
-    // Użyj FSRCO jako źródła zegara (bez HFXO)
-    CMU_ClockSelectSet(cmuClock_IADCCLK, cmuSelect_FSRCO);
-    CMU_ClockEnable(cmuClock_GPIO, true);
-    CMU_ClockEnable(cmuClock_IADC0, true);
+   CMU_ClockSelectSet(cmuClock_IADCCLK, cmuSelect_FSRCO);
+   CMU_ClockEnable(cmuClock_GPIO, true);
+   CMU_ClockEnable(cmuClock_IADC0, true);
 
-    GPIO_PinModeSet(GPIO_OUTPUT_0_PORT, GPIO_OUTPUT_0_PIN, gpioModePushPull, 0);
+   GPIO_PinModeSet(GPIO_OUTPUT_0_PORT, GPIO_OUTPUT_0_PIN, gpioModePushPull, 0);
 
   IADC_Init_t init = IADC_INIT_DEFAULT;
   IADC_AllConfigs_t initAllConfigs = IADC_ALLCONFIGS_DEFAULT;

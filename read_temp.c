@@ -3,7 +3,7 @@
 
 extern volatile double scanResult[];
 
-void iadc_convert_all_to_temperature(const float *voltages_mV, float *temperatures_C, int NUM_SCAN_CHANNELS)
+void iadc_convert_all_to_temperature(float *temperatures_C, int NUM_SCAN_CHANNELS)
 {
   float V0 = 0.412f * 1000.0f;  // mV przy 0°C
   float V1 = 0.643f * 1000.0f;  // mV przy 25.68°C
