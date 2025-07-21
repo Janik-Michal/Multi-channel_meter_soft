@@ -7,14 +7,37 @@
 #include "uart_comm.h"
 #include "modbus_rtu_slave.h"
 #include "read_temp.h"
+#include "int_sensor.h"
+#include "Flash_handle.h"
+
 #include <stdio.h>
 
 #define NUM_SCAN_CHANNELS 5
+#define FIR_TAPS 10
+
+float fir_coeffs[FIR_TAPS] = {0.15f, 0.13f, 0.12f, 0.11f, 0.10f, 0.09f, 0.08f, 0.07f, 0.08f, 0.07f};
+float adc_buffer[NUM_SCAN_CHANNELS][FIR_TAPS];
+float tmp_fir_buffer[FIR_TAPS] = {0};
+int adc_index[NUM_SCAN_CHANNELS] = {0};
+int tmp_fir_index = 0;
 
 char buffer[64];
 float temperatures_C[NUM_SCAN_CHANNELS];
-extern volatile double scanResult[NUM_SCAN_CHANNELS];
-extern int16_t holding_registers[]; // dostęp do rejestrów Modbus
+extern int16_t holding_registers[];
+
+float fir_filter(float *buffer, int *index, float new_sample) {
+    buffer[*index] = new_sample;
+    float result = 0.0f;
+    int idx = *index;
+
+    for (int i = 0; i < FIR_TAPS; i++) {
+        result += fir_coeffs[i] * buffer[idx];
+        if (--idx < 0) idx = FIR_TAPS - 1;
+    }
+
+    *index = (*index + 1) % FIR_TAPS;
+    return result;
+}
 
 void systick_init(void)
 {
@@ -28,17 +51,26 @@ void systick_init(void)
 void SysTick_Handler(void)
 {
     iadc_convert_all_to_temperature(temperatures_C, NUM_SCAN_CHANNELS);
+    Internal_data_struct* calib = flash_data_struct_getter();
 
-    // Update holding_registers
     for (int i = 0; i < NUM_SCAN_CHANNELS; i++) {
-            holding_registers[i] = (int16_t)(temperatures_C[i] * 100.0f);
+        float filtered = fir_filter(adc_buffer[i], &adc_index[i], temperatures_C[i]);
+        // --- Zastosuj kalibrację ---
+        float gain = calib->ADC_calib_gain[i] / 1000.0f;
+        float offset = calib->ADC_calib_offset[i] / 1000.0f;
+        float calibrated = filtered * gain + offset;
+
+        holding_registers[i] = (int16_t)(calibrated * 100.0f); // np. 25.42°C -> 2542
     }
-                      // ---  USB --- //
-   /* uart_send_string("Temperatury:\r\n");
-    for (int i = 0; i < NUM_SCAN_CHANNELS; i++) {
-        snprintf(buffer, sizeof(buffer), "CH[%d]: %.2f °C\r\n", i, temperatures_C[i]);
-        uart_send_string(buffer);
-    }*/
+
+    // TMP1075 osobno jeśli używasz oddzielnie
+    float tmp_temp = tmp1075_read_temperature();
+    float tmp_filtered = fir_filter(tmp_fir_buffer, &tmp_fir_index, tmp_temp);
+    float gain = calib->ADC_calib_gain[5] / 1000.0f;
+    float offset = calib->ADC_calib_offset[5] / 1000.0f;
+    float tmp_calibrated = tmp_filtered * gain + offset;
+
+    holding_registers[NUM_SCAN_CHANNELS] = (int16_t)(tmp_calibrated * 100.0f);
 }
 
 void timer0_init(void)
@@ -74,16 +106,19 @@ void TIMER0_IRQHandler(void)
 int main(void)
 {
     CHIP_Init();
-    uart_init();               // USART0: TX/RX
-    initIADC();                // ADC - 5 kanałów
-    systick_init();            // 1 Hz update
-    timer0_init();             // Timer dla Modbus RTU
+    uart_init();
+    i2c_init();
+    initIADC();
+    systick_init();
+    timer0_init();
 
-    NVIC_EnableIRQ(USART0_RX_IRQn); // RX interrupt
+    retrieve_flash_data_struct(); // <- Odczytaj dane kalibracyjne z Flash
 
-    while (1) {
+    NVIC_EnableIRQ(USART0_RX_IRQn);
 
-        modbus_poll();  // Obsługa Modbus
-        __WFI();        // Czekaj na przerwanie
+    while (1)
+    {
+        modbus_poll();
+        __WFI();
     }
 }

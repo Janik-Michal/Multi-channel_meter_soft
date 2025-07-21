@@ -2,6 +2,7 @@
 #include "em_gpio.h"
 #include "em_cmu.h"
 #include "modbus_rtu_slave.h"
+#include "flash_handle.h"
 
 #define UART USART0
 
@@ -18,9 +19,20 @@ void uart_init(void)
   CMU_ClockEnable(cmuClock_GPIO, true);
   CMU_ClockEnable(cmuClock_USART0, true);
 
-  // Inicjalizacja USART w trybie asynchronicznym (8N1)
-  USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
-  init.baudrate = 115200;
+  Internal_data_struct *calib = flash_data_struct_getter();  // struktura z flasha
+
+   uint32_t baud;
+   switch (calib->Modbus_baud) {
+     case 0: baud = 9600; break;
+     case 1: baud = 19200; break;
+     case 2: baud = 38400; break;
+     case 3: baud = 57600; break;
+     case 4: baud = 115200; break;
+     default: baud = 115200; break;
+   }
+
+   USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
+   init.baudrate = baud;
   USART_InitAsync(UART, &init);
 
                         // =====  USB =====
