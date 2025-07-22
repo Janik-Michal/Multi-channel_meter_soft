@@ -89,35 +89,39 @@ void modbus_poll(void) {
     }
 
     else if (func == 0x06 && modbus_rx_count >= 8) {
-        // Write Single Register
         uint16_t reg = (req[2] << 8) | req[3];
         uint16_t val = (req[4] << 8) | req[5];
 
         if (reg < MODBUS_REG_COUNT) {
             holding_registers[reg] = val;
 
-            // --- Obsługa kalibracji ---
-            Internal_data_struct* calib = flash_data_struct_getter();
+            bool need_store = false;
 
             if (reg >= 20 && reg <= 25) {
                 calib->ADC_calib_gain[reg - 20] = val;
+                need_store = true;
             } else if (reg >= 26 && reg <= 31) {
                 calib->ADC_calib_offset[reg - 26] = val;
+                need_store = true;
             } else if (reg == 32 && val == 1) {
-                rewrite_CRC_to_flash_data_struct();
-                store_flash_data_struct();
+                need_store = true;
             } else if (reg == 33) {
                 if (val >= 1 && val <= 247) {
                     calib->Modbus_ID = val;
+                    need_store = true;
                 }
             } else if (reg == 34) {
-                if (val <= 4) {  // enum: 0–4
+                if (val <= 4) {
                     calib->Modbus_baud = val;
+                    need_store = true;
                 }
-            } else if (reg == 35 && val == 1) {
+            }
+
+            if (need_store) {
                 rewrite_CRC_to_flash_data_struct();
                 store_flash_data_struct();
-                NVIC_SystemReset();  // Reset systemu po zapisie nowego ID / baudrate
+                __DSB();  // <- ważne dla spójności zapisu
+                __ISB();
             }
 
             memcpy(resp, req, 6);
@@ -125,7 +129,7 @@ void modbus_poll(void) {
         } else {
             resp[0] = calib->Modbus_ID;
             resp[1] = func | 0x80;
-            resp[2] = 0x02; // Illegal address
+            resp[2] = 0x02;
             resp_len = 3;
         }
     }

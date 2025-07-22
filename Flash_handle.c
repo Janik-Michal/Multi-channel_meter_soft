@@ -11,7 +11,7 @@ static Internal_data_struct mInternal_data_struct = {
     .ADC_calib_offset = {0, 0, 0, 0, 0, 0},          // 0.000 offset
 
     .Modbus_ID = 1,
-    .Modbus_baud = 115200,
+    .Modbus_baud = 4,
 
     .HWID = 0,
     .SWID = 0,
@@ -82,19 +82,17 @@ Internal_data_struct * flash_data_struct_getter(void)
 {
   return &mInternal_data_struct;
 }
-
 void set_adc_calibration(int16_t *offset_mv, uint16_t *gain)
 {
   memcpy(mInternal_data_struct.ADC_calib_offset, offset_mv, sizeof(mInternal_data_struct.ADC_calib_offset));
   memcpy(mInternal_data_struct.ADC_calib_gain, gain, sizeof(mInternal_data_struct.ADC_calib_gain));
+  rewrite_CRC_to_flash_data_struct();
   store_flash_data_struct();
 }
-
-
 void set_modbus_settings(uint16_t id, uint16_t baud)
 {
   mInternal_data_struct.Modbus_ID = id;
   mInternal_data_struct.Modbus_baud = baud;
+  rewrite_CRC_to_flash_data_struct();
   store_flash_data_struct();
-  NVIC_SystemReset();
 }

@@ -105,14 +105,16 @@ void TIMER0_IRQHandler(void)
 
 int main(void)
 {
-    CHIP_Init();
+  CHIP_Init();
+  rewrite_CRC_to_flash_data_struct();
+  store_flash_data_struct();
+
+    retrieve_flash_data_struct(); // <- Odczytaj dane kalibracyjne z Flash
     uart_init();
     i2c_init();
     initIADC();
     systick_init();
     timer0_init();
-
-    retrieve_flash_data_struct(); // <- Odczytaj dane kalibracyjne z Flash
 
     NVIC_EnableIRQ(USART0_RX_IRQn);
 
