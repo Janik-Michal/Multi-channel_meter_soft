@@ -13,9 +13,15 @@
 #include <stdio.h>
 
 #define NUM_SCAN_CHANNELS 5
-#define FIR_TAPS 10
+#define FIR_TAPS 20
 
-float fir_coeffs[FIR_TAPS] = {0.15f, 0.13f, 0.12f, 0.11f, 0.10f, 0.09f, 0.08f, 0.07f, 0.08f, 0.07f};
+float fir_coeffs[FIR_TAPS] = {
+    0.0667f, 0.0648f, 0.0629f, 0.0610f, 0.0590f,
+    0.0571f, 0.0552f, 0.0533f, 0.0514f, 0.0495f,
+    0.0476f, 0.0457f, 0.0438f, 0.0419f, 0.0400f,
+    0.0381f, 0.0362f, 0.0343f, 0.0324f, 0.0305f
+};
+
 float adc_buffer[NUM_SCAN_CHANNELS][FIR_TAPS];
 float tmp_fir_buffer[FIR_TAPS] = {0};
 int adc_index[NUM_SCAN_CHANNELS] = {0};
@@ -25,6 +31,7 @@ char buffer[64];
 float temperatures_C[NUM_SCAN_CHANNELS];
 extern int16_t holding_registers[];
 
+// --- filtrowanie próbek --- //
 float fir_filter(float *buffer, int *index, float new_sample) {
     buffer[*index] = new_sample;
     float result = 0.0f;
@@ -41,7 +48,7 @@ float fir_filter(float *buffer, int *index, float new_sample) {
 
 void systick_init(void)
 {
-    SysTick->LOAD = SystemCoreClock - 1;  // 1 Hz
+    SysTick->LOAD = SystemCoreClock - 1;
     SysTick->VAL = 0;
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk |
                     SysTick_CTRL_ENABLE_Msk |
@@ -55,7 +62,7 @@ void SysTick_Handler(void)
 
     for (int i = 0; i < NUM_SCAN_CHANNELS; i++) {
         float filtered = fir_filter(adc_buffer[i], &adc_index[i], temperatures_C[i]);
-        // --- Zastosuj kalibrację ---
+        // --- kalibracja ---
         float gain = calib->ADC_calib_gain[i] / 1000.0f;
         float offset = calib->ADC_calib_offset[i] / 1000.0f;
         float calibrated = filtered * gain + offset;
@@ -63,7 +70,7 @@ void SysTick_Handler(void)
         holding_registers[i] = (int16_t)(calibrated * 100.0f); // np. 25.42°C -> 2542
     }
 
-    // TMP1075 osobno jeśli używasz oddzielnie
+    // TMP1075
     float tmp_temp = tmp1075_read_temperature();
     float tmp_filtered = fir_filter(tmp_fir_buffer, &tmp_fir_index, tmp_temp);
     float gain = calib->ADC_calib_gain[5] / 1000.0f;
@@ -92,7 +99,7 @@ void timer0_init(void)
     };
 
     TIMER_Init(TIMER0, &timerInit);
-    TIMER_TopSet(TIMER0, 185);  // 1 ms
+    TIMER_TopSet(TIMER0, 185);
     TIMER_IntEnable(TIMER0, TIMER_IEN_OF);
     NVIC_EnableIRQ(TIMER0_IRQn);
 }
@@ -105,11 +112,8 @@ void TIMER0_IRQHandler(void)
 
 int main(void)
 {
-  CHIP_Init();
-  rewrite_CRC_to_flash_data_struct();
-  store_flash_data_struct();
-
-    retrieve_flash_data_struct(); // <- Odczytaj dane kalibracyjne z Flash
+    CHIP_Init();
+    retrieve_flash_data_struct();
     uart_init();
     i2c_init();
     initIADC();

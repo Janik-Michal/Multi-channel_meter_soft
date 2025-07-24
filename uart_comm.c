@@ -14,26 +14,36 @@ void USART0_RX_IRQHandler(void)
     }
 }
 
+void uart_set_baud_from_flash(void)
+{
+    Internal_data_struct *calib = flash_data_struct_getter();
+
+    uint32_t baud;
+    switch (calib->Modbus_baud) {
+        case 16: baud = 9600; break;
+        case 17: baud = 19200; break;
+        case 18: baud = 38400; break;
+        case 19: baud = 57600; break;
+        case 20: baud = 115200; break;
+        default: baud = 115200; break;
+    }
+
+    USART_Enable(UART, usartDisable);
+    UART->CMD = USART_CMD_RXDIS | USART_CMD_TXDIS;
+
+    USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
+    init.baudrate = baud;
+    USART_InitAsync(UART, &init);
+
+    USART_Enable(UART, usartEnable);
+}
+
 void uart_init(void)
 {
   CMU_ClockEnable(cmuClock_GPIO, true);
   CMU_ClockEnable(cmuClock_USART0, true);
 
-  Internal_data_struct *calib = flash_data_struct_getter();  // struktura z flasha
-
-   uint32_t baud;
-   switch (calib->Modbus_baud) {
-     case 0: baud = 9600; break;
-     case 1: baud = 19200; break;
-     case 2: baud = 38400; break;
-     case 3: baud = 57600; break;
-     case 4: baud = 115200; break;
-     default: baud = 115200; break;
-   }
-
-   USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
-   init.baudrate = baud;
-  USART_InitAsync(UART, &init);
+  uart_set_baud_from_flash();
 
                         // =====  USB =====
 

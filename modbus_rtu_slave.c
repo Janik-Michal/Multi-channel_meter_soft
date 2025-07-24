@@ -1,6 +1,7 @@
 #include "modbus_rtu_slave.h"
 #include "em_timer.h"
 #include "Flash_handle.h"
+#include "uart_comm.h"
 #include <string.h>
 #include <stdbool.h>
 
@@ -8,12 +9,12 @@
 static volatile uint8_t modbus_rx_buf[MODBUS_BUFFER_SIZE];
 static volatile uint8_t modbus_rx_count = 0;
 static volatile bool modbus_frame_ready = false;
+extern void uart_send_byte(uint8_t data);
 
 int16_t holding_registers[MODBUS_REG_COUNT] = {0};
 
-extern void uart_send_byte(uint8_t data);
+        // --- CRC16 Modbus -- //
 
-// CRC16 Modbus
 uint16_t modbus_crc16(const uint8_t *buffer, uint8_t length) {
     uint16_t crc = 0xFFFF;
     for (uint8_t pos = 0; pos < length; pos++) {
@@ -97,30 +98,28 @@ void modbus_poll(void) {
 
             bool need_store = false;
 
-            if (reg >= 20 && reg <= 25) {
+            if (reg >= 20 && reg <= 25) {                 // register 20-25 - ADC_gain
                 calib->ADC_calib_gain[reg - 20] = val;
                 need_store = true;
-            } else if (reg >= 26 && reg <= 31) {
+            } else if (reg >= 26 && reg <= 31) {          // register 26-31 - ADC_offset
                 calib->ADC_calib_offset[reg - 26] = val;
                 need_store = true;
-            } else if (reg == 32 && val == 1) {
-                need_store = true;
-            } else if (reg == 33) {
+            } else if (reg == 33) {                       // register 33 - ID Slave
                 if (val >= 1 && val <= 247) {
                     calib->Modbus_ID = val;
                     need_store = true;
                 }
-            } else if (reg == 34) {
-                if (val <= 4) {
+            } else if (reg == 34) {                       // register 34 - Baudrate
+                if (val <= 40) {
                     calib->Modbus_baud = val;
                     need_store = true;
+                    uart_set_baud_from_flash();
                 }
             }
-
-            if (need_store) {
+            if (need_store) {                             // write to flash
                 rewrite_CRC_to_flash_data_struct();
                 store_flash_data_struct();
-                __DSB();  // <- ważne dla spójności zapisu
+                __DSB();
                 __ISB();
             }
 

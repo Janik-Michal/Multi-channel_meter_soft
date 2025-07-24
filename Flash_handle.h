@@ -11,22 +11,17 @@
 #include "em_cmu.h"
 #include "modbus_rtu_slave.h"
 
-typedef struct
-{
-  // Kalibracja ADC
-  uint16_t ADC_calib_gain[6];   // 0–5
-  uint16_t ADC_calib_offset[6];
-
-  // Konfiguracja Modbus
-  uint16_t Modbus_ID;
-  uint16_t Modbus_baud; // 0=115200, 1=38400, 2=9600, 3=2400
-
-  // Identyfikatory
-  uint16_t HWID;
-  uint16_t SWID;
-
-  uint16_t CRC;
+typedef struct __attribute__((packed)) {
+    int16_t ADC_calib_gain[6];
+    int16_t ADC_calib_offset[6];
+    uint16_t Modbus_ID;
+    uint16_t Modbus_baud;
+    uint16_t HWID;
+    uint16_t SWID;
+    uint8_t _padding[6];  // tylko jeśli potrzebujesz dopełnić do 32-bit
+    uint16_t CRC;
 } Internal_data_struct;
+#define CRC_OFFSET  (sizeof(Internal_data_struct) - sizeof(uint16_t))
 
 void rewrite_CRC_to_flash_data_struct(void);
 void store_flash_data_struct(void);

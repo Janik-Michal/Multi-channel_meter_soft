@@ -7,14 +7,13 @@
 #define USER_PAGE_SIZE        8192UL
 
 static Internal_data_struct mInternal_data_struct = {
-    .ADC_calib_gain = {1000,1000,1000,1000,1000,1000},                 // 1.0000 domyślny gain
-    .ADC_calib_offset = {0, 0, 0, 0, 0, 0},          // 0.000 offset
-
+    .ADC_calib_gain = {1000,1000,1000,1000,1000,1000},   // 1.0000 domyślny gain
+    .ADC_calib_offset = {0, 0, 0, 0, 0, 0},              // 0.000 offset
     .Modbus_ID = 1,
     .Modbus_baud = 4,
-
     .HWID = 0,
     .SWID = 0,
+    ._padding = {0,0},
     .CRC = 0
 };
 void read_bytes_from_flash(uint32_t address, uint8_t *data, uint32_t bytes_amount)
@@ -45,9 +44,9 @@ MSC_Status_TypeDef write_user_flash(uint8_t *data, uint32_t bytes_amount)
 
     if (status != mscReturnOk) {
         MSC_Deinit();
-        return mscReturnOk;
+        return status;
     }
-    //MSC_Deinit();
+    MSC_Deinit();
     return mscReturnOk;
 }
 
@@ -56,32 +55,32 @@ void rewrite_CRC_to_flash_data_struct(void)
   mInternal_data_struct.CRC = modbus_crc16((uint8_t *)(&mInternal_data_struct), sizeof(Internal_data_struct) - 2);
 }
 
-void store_flash_data_struct(void) //Store struct in memory
+void store_flash_data_struct(void)
 {
-  write_user_flash((uint8_t *)(&mInternal_data_struct),sizeof(Internal_data_struct));
+    mInternal_data_struct.CRC = modbus_crc16((uint8_t *)&mInternal_data_struct, CRC_OFFSET);
+    write_user_flash((uint8_t *)(&mInternal_data_struct), sizeof(Internal_data_struct));
 }
 
-void retrieve_flash_data_struct(void) //Get struct from memory, do not use it if corrupted!
-{
-  Internal_data_struct temp_Internal_data_struct;
-  unsigned struct_size = sizeof(Internal_data_struct);
-  read_bytes_from_user_flash(0,(uint8_t *)(&temp_Internal_data_struct),struct_size);
-  if(temp_Internal_data_struct.CRC == modbus_crc16((uint8_t *)(&mInternal_data_struct), struct_size-2))
-    {
-      //CRC correct, here is not brand new software uploaded. Probably.
-      memcpy( &mInternal_data_struct, &temp_Internal_data_struct, struct_size);
-    }else //CRC mismatch, operate on default values, write them to flash. Brand new software probably.
-    {
-      rewrite_CRC_to_flash_data_struct();
-      store_flash_data_struct();
-      return;
+  void retrieve_flash_data_struct(void)
+  {
+    Internal_data_struct temp;
+    read_bytes_from_user_flash(0, (uint8_t *)&temp, sizeof(temp));
+
+    uint16_t crc_calc = modbus_crc16((uint8_t *)&temp, CRC_OFFSET);
+
+    if (temp.CRC == crc_calc) {
+        memcpy(&mInternal_data_struct, &temp, sizeof(temp));
+    } else {
+        rewrite_CRC_to_flash_data_struct();
+        store_flash_data_struct();
     }
-}
+  }
 
 Internal_data_struct * flash_data_struct_getter(void)
 {
   return &mInternal_data_struct;
 }
+
 void set_adc_calibration(int16_t *offset_mv, uint16_t *gain)
 {
   memcpy(mInternal_data_struct.ADC_calib_offset, offset_mv, sizeof(mInternal_data_struct.ADC_calib_offset));
