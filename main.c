@@ -9,30 +9,39 @@
 #include "read_temp.h"
 #include "int_sensor.h"
 #include "Flash_handle.h"
+#include "em_iadc.h"
 
 #include <stdio.h>
+#include <stdbool.h>
 
-#define NUM_SCAN_CHANNELS 5
-#define FIR_TAPS 20
+#define NUM_SCAN_CHANNELS 10
+#define FIR_TAPS          20
 
-float fir_coeffs[FIR_TAPS] = {
-    0.0667f, 0.0648f, 0.0629f, 0.0610f, 0.0590f,
-    0.0571f, 0.0552f, 0.0533f, 0.0514f, 0.0495f,
-    0.0476f, 0.0457f, 0.0438f, 0.0419f, 0.0400f,
-    0.0381f, 0.0362f, 0.0343f, 0.0324f, 0.0305f
+// ---------------- FIR coefficients ----------------
+static float fir_coeffs[FIR_TAPS] = {
+    0.069f, 0.068f, 0.066f, 0.064f, 0.062f,
+    0.060f, 0.058f, 0.056f, 0.053f, 0.051f,
+    0.049f, 0.047f, 0.045f, 0.042f, 0.040f,
+    0.038f, 0.036f, 0.034f, 0.032f, 0.030f
 };
 
-float adc_buffer[NUM_SCAN_CHANNELS][FIR_TAPS];
-float tmp_fir_buffer[FIR_TAPS] = {0};
-int adc_index[NUM_SCAN_CHANNELS] = {0};
-int tmp_fir_index = 0;
+// ---------------- Buffers ----------------
+static float adc_buffer[NUM_SCAN_CHANNELS][FIR_TAPS];
+static int   adc_index[NUM_SCAN_CHANNELS] = {0};
 
-char buffer[64];
-float temperatures_C[NUM_SCAN_CHANNELS];
+static float tmp_fir_buffer[FIR_TAPS] = {0};
+static int   tmp_fir_index = 0;
+
+static float temperatures_C[NUM_SCAN_CHANNELS];
 extern int16_t holding_registers[];
 
-// --- filtrowanie próbek --- //
-float fir_filter(float *buffer, int *index, float new_sample) {
+// ---------------- Flags ----------------
+volatile bool g_do_measurement  = false;  // ustawiane w SysTick
+volatile bool g_modbus_timeout  = false; // ustawiane w Timer0
+
+// ---------------- FIR filter ----------------
+static float fir_filter(float *buffer, int *index, float new_sample)
+{
     buffer[*index] = new_sample;
     float result = 0.0f;
     int idx = *index;
@@ -46,41 +55,23 @@ float fir_filter(float *buffer, int *index, float new_sample) {
     return result;
 }
 
-void systick_init(void)
+// ---------------- SysTick ----------------
+static void systick_init(void)
 {
-    SysTick->LOAD = SystemCoreClock - 1;
-    SysTick->VAL = 0;
+    SysTick->LOAD = (SystemCoreClock) - 1; // 1 Hz tick
+    SysTick->VAL  = 0;
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk |
-                    SysTick_CTRL_ENABLE_Msk |
+                    SysTick_CTRL_ENABLE_Msk    |
                     SysTick_CTRL_TICKINT_Msk;
 }
 
 void SysTick_Handler(void)
 {
-    iadc_convert_all_to_temperature(temperatures_C, NUM_SCAN_CHANNELS);
-    Internal_data_struct* calib = flash_data_struct_getter();
-
-    for (int i = 0; i < NUM_SCAN_CHANNELS; i++) {
-        float filtered = fir_filter(adc_buffer[i], &adc_index[i], temperatures_C[i]);
-        // --- kalibracja ---
-        float gain = calib->ADC_calib_gain[i] / 1000.0f;
-        float offset = calib->ADC_calib_offset[i] / 1000.0f;
-        float calibrated = filtered * gain + offset;
-
-        holding_registers[i] = (int16_t)(calibrated * 100.0f); // np. 25.42°C -> 2542
-    }
-
-    // TMP1075
-    float tmp_temp = tmp1075_read_temperature();
-    float tmp_filtered = fir_filter(tmp_fir_buffer, &tmp_fir_index, tmp_temp);
-    float gain = calib->ADC_calib_gain[5] / 1000.0f;
-    float offset = calib->ADC_calib_offset[5] / 1000.0f;
-    float tmp_calibrated = tmp_filtered * gain + offset;
-
-    holding_registers[NUM_SCAN_CHANNELS] = (int16_t)(tmp_calibrated * 100.0f);
+    g_do_measurement = true;  // tylko sygnał
 }
 
-void timer0_init(void)
+// ---------------- Timer0 ----------------
+static void timer0_init(void)
 {
     CMU_ClockEnable(cmuClock_TIMER0, true);
 
@@ -99,7 +90,7 @@ void timer0_init(void)
     };
 
     TIMER_Init(TIMER0, &timerInit);
-    TIMER_TopSet(TIMER0, 185);
+    TIMER_TopSet(TIMER0, 4);
     TIMER_IntEnable(TIMER0, TIMER_IEN_OF);
     NVIC_EnableIRQ(TIMER0_IRQn);
 }
@@ -107,14 +98,45 @@ void timer0_init(void)
 void TIMER0_IRQHandler(void)
 {
     TIMER_IntClear(TIMER0, TIMER_IF_OF);
-    modbus_on_frame_timeout();
+    g_modbus_timeout = true; // tylko flaga
 }
 
+// ---------------- Measurement task ----------------
+static void do_measurement_task(void)
+{
+    iadc_convert_all_to_temperature(temperatures_C, NUM_SCAN_CHANNELS);
+    Internal_data_struct* calib = flash_data_struct_getter();
+
+    for (int i = 0; i < NUM_SCAN_CHANNELS; i++) {
+        float filtered   = fir_filter(adc_buffer[i], &adc_index[i], temperatures_C[i]);
+        float gain       = calib->ADC_calib_gain[i]   / 1000.0f;
+        float offset     = calib->ADC_calib_offset[i] / 1000.0f;
+        float calibrated = filtered * gain + offset - 0.5f;
+
+        holding_registers[i] = (int16_t)(calibrated * 100.0f);
+    }
+
+    // TMP1075
+    float tmp_temp     = tmp1075_read_temperature();
+    float tmp_filtered = fir_filter(tmp_fir_buffer, &tmp_fir_index, tmp_temp);
+    holding_registers[10] = (int16_t)(tmp_filtered * 100.0f);
+
+    // Example: raw ADC channel value
+    float v_ch1 = (float)scanResult[0];
+    holding_registers[33] = (int16_t)(v_ch1);
+}
+
+// ---------------- Main ----------------
 int main(void)
 {
     CHIP_Init();
+    MSC_Init();
+
     retrieve_flash_data_struct();
+
+    // Init peripherals
     uart_init();
+
     i2c_init();
     initIADC();
     systick_init();
@@ -124,7 +146,22 @@ int main(void)
 
     while (1)
     {
+        // zadania okresowe
+        if (g_do_measurement) {
+            g_do_measurement = false;
+            IADC_command(IADC0, iadcCmdStartScan);
+            do_measurement_task();
+        }
+
+        // obsługa timeoutu Modbus
+        if (g_modbus_timeout) {
+            g_modbus_timeout = false;
+            modbus_on_frame_timeout();
+        }
+
+        // obsługa protokołu
         modbus_poll();
-        __WFI();
+
+        __WFI(); // oszczędzanie energii
     }
 }

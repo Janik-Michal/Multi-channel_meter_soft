@@ -98,19 +98,19 @@ void modbus_poll(void) {
 
             bool need_store = false;
 
-            if (reg >= 20 && reg <= 25) {                 // register 20-25 - ADC_gain
-                calib->ADC_calib_gain[reg - 20] = val;
+            if (reg >= 11 && reg <= 20) {                 // register 11-20 - ADC_gain
+                calib->ADC_calib_gain[reg - 11] = val;
                 need_store = true;
-            } else if (reg >= 26 && reg <= 31) {          // register 26-31 - ADC_offset
-                calib->ADC_calib_offset[reg - 26] = val;
+            } else if (reg >= 21 && reg <= 30) {          // register 21-30 - ADC_offset
+                calib->ADC_calib_offset[reg - 21] = val;
                 need_store = true;
-            } else if (reg == 33) {                       // register 33 - ID Slave
+            } else if (reg == 31) {                       // register 33 - ID Slave
                 if (val >= 1 && val <= 247) {
                     calib->Modbus_ID = val;
                     need_store = true;
                 }
-            } else if (reg == 34) {                       // register 34 - Baudrate
-                if (val <= 40) {
+            } else if (reg == 32) {                       // register 34 - Baudrate
+                if (val <= 4) {
                     calib->Modbus_baud = val;
                     need_store = true;
                     uart_set_baud_from_flash();

@@ -12,8 +12,8 @@
 #include "modbus_rtu_slave.h"
 
 typedef struct __attribute__((packed)) {
-    int16_t ADC_calib_gain[6];
-    int16_t ADC_calib_offset[6];
+    int16_t ADC_calib_gain[10];
+    int16_t ADC_calib_offset[10];
     uint16_t Modbus_ID;
     uint16_t Modbus_baud;
     uint16_t HWID;

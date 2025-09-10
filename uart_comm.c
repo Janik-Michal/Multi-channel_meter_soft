@@ -12,6 +12,7 @@ void USART0_RX_IRQHandler(void)
         uint8_t byte = USART_Rx(USART0);
         modbus_handle_rx_byte(byte);
     }
+    USART_IntClear(USART0, USART_IF_RXDATAV);
 }
 
 void uart_set_baud_from_flash(void)
@@ -20,11 +21,11 @@ void uart_set_baud_from_flash(void)
 
     uint32_t baud;
     switch (calib->Modbus_baud) {
-        case 16: baud = 9600; break;
-        case 17: baud = 19200; break;
-        case 18: baud = 38400; break;
-        case 19: baud = 57600; break;
-        case 20: baud = 115200; break;
+        case 0: baud = 9600; break;
+        case 1: baud = 19200; break;
+        case 2: baud = 38400; break;
+        case 3: baud = 57600; break;
+        case 4: baud = 115200; break;
         default: baud = 115200; break;
     }
 
@@ -44,35 +45,17 @@ void uart_init(void)
   CMU_ClockEnable(cmuClock_USART0, true);
 
   uart_set_baud_from_flash();
-
-                        // =====  USB =====
-
+  // GPIO konfiguracja:
   GPIO_PinModeSet(gpioPortA, 6, gpioModePushPull, 1);  // TX (PA6)
-  GPIO_PinModeSet(gpioPortA, 5, gpioModeInput, 0);     // RX (PA5)
+   GPIO_PinModeSet(gpioPortA, 5, gpioModeInput, 0);     // RX (PA5)
 
-  GPIO->USARTROUTE[0].TXROUTE = (gpioPortA << _GPIO_USART_TXROUTE_PORT_SHIFT) |
-                                (6 << _GPIO_USART_TXROUTE_PIN_SHIFT);  // PA6 = TX
-  GPIO->USARTROUTE[0].RXROUTE = (gpioPortA << _GPIO_USART_RXROUTE_PORT_SHIFT) |
-                                (5 << _GPIO_USART_RXROUTE_PIN_SHIFT);  // PA5 = RX
-  GPIO->USARTROUTE[0].ROUTEEN = GPIO_USART_ROUTEEN_RXPEN | GPIO_USART_ROUTEEN_TXPEN;
+   GPIO->USARTROUTE[0].TXROUTE = (gpioPortA << _GPIO_USART_TXROUTE_PORT_SHIFT) |
+                                 (6 << _GPIO_USART_TXROUTE_PIN_SHIFT);  // PA6 = TX
+   GPIO->USARTROUTE[0].RXROUTE = (gpioPortA << _GPIO_USART_RXROUTE_PORT_SHIFT) |
+                                 (5 << _GPIO_USART_RXROUTE_PIN_SHIFT);  // PA5 = RX
+   GPIO->USARTROUTE[0].ROUTEEN = GPIO_USART_ROUTEEN_RXPEN | GPIO_USART_ROUTEEN_TXPEN;
 
   USART_IntEnable(UART, USART_IEN_RXDATAV);
-  /*
-   *
-                        // === MODBUS RS485 ===
-
-  // GPIO konfiguracja:
-  GPIO_PinModeSet(gpioPortA, 5, gpioModePushPull, 1);  // TX (PA5)
-  GPIO_PinModeSet(gpioPortA, 6, gpioModeInput, 0);     // RX (PA6)
-  GPIO_PinModeSet(gpioPortA, 4, gpioModePushPull, 0);  // DIR (PA4)
-
-  // ROUTING - RS485
-  GPIO->USARTROUTE[0].TXROUTE = (gpioPortA << _GPIO_USART_TXROUTE_PORT_SHIFT) |
-                                (5 << _GPIO_USART_TXROUTE_PIN_SHIFT);  // PA5 = TX
-  GPIO->USARTROUTE[0].RXROUTE = (gpioPortA << _GPIO_USART_RXROUTE_PORT_SHIFT) |
-                                (6 << _GPIO_USART_RXROUTE_PIN_SHIFT);  // PA6 = RX
-  GPIO->USARTROUTE[0].ROUTEEN = GPIO_USART_ROUTEEN_RXPEN | GPIO_USART_ROUTEEN_TXPEN;
-  */
 }
 
 void uart_send_byte(uint8_t data)
@@ -81,8 +64,8 @@ void uart_send_byte(uint8_t data)
 
   USART_Tx(UART, data);
 
-  //while (!(UART->STATUS & USART_STATUS_TXC));   // === MODBUS RS485 ===
-  //GPIO_PinOutClear(gpioPortA, 4);               // === MODBUS RS485 ===
+ // while (!(UART->STATUS & USART_STATUS_TXC));   // === MODBUS RS485 ===
+ // GPIO_PinOutClear(gpioPortA, 4);               // === MODBUS RS485 ===
 }
 
 uint8_t uart_receive_byte(void)
