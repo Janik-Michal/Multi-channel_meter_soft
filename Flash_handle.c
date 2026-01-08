@@ -7,7 +7,7 @@
 #define USER_PAGE_SIZE        8192UL
 
 static Internal_data_struct mInternal_data_struct = {
-    .ADC_calib_gain = {1000,1000,1000,1000,1000,1000,1000,1000,1000,1000},   // 1.0000 domyślny gain
+    .ADC_calib_gain = {1000,1000,1000,1000,1000,1000,1000,1000,1000,1000},   // 1.0000 gain
     .ADC_calib_offset = {0,0,0,0,0,0,0,0,0,0},              // 0.000 offset
     .Modbus_ID = 2,
     .Modbus_baud = 4,

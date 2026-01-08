@@ -104,12 +104,12 @@ void modbus_poll(void) {
             } else if (reg >= 21 && reg <= 30) {          // register 21-30 - ADC_offset
                 calib->ADC_calib_offset[reg - 21] = val;
                 need_store = true;
-            } else if (reg == 31) {                       // register 33 - ID Slave
+            } else if (reg == 31) {                       // register 31 - ID Slave
                 if (val >= 1 && val <= 247) {
                     calib->Modbus_ID = val;
                     need_store = true;
                 }
-            } else if (reg == 32) {                       // register 34 - Baudrate
+            } else if (reg == 32) {                       // register 32 - Baudrate
                 if (val <= 4) {
                     calib->Modbus_baud = val;
                     need_store = true;

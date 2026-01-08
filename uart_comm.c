@@ -45,7 +45,7 @@ void uart_init(void)
   CMU_ClockEnable(cmuClock_USART0, true);
 
   uart_set_baud_from_flash();
-  // GPIO konfiguracja:
+  // GPIO configuration:
   GPIO_PinModeSet(gpioPortA, 6, gpioModePushPull, 1);  // TX (PA6)
    GPIO_PinModeSet(gpioPortA, 5, gpioModeInput, 0);     // RX (PA5)
 

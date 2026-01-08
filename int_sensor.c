@@ -43,13 +43,14 @@ float tmp1075_read_temperature(void)
   seq.buf[1].len  = 2;
 
   I2C_TransferReturn_TypeDef result = I2C_TransferInit(i2c, &seq);
+
   while (result == i2cTransferInProgress)
   {
     result = I2C_Transfer(i2c);
   }
 
   if (result != i2cTransferDone)
-    return -1000.0f;  // Błąd
+    return -1000.0f;  // Error
 
   // Data temperature TMP1075 (16-bit)
   int16_t raw_temp = (temp_data[0] << 8) | temp_data[1];

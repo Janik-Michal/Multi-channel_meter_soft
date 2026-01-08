@@ -3,4 +3,4 @@
 
 void iadc_convert_all_to_temperature(float *temperatures_C, int numChannels);
 
-#endif // READ_TEMP_H
+#endif

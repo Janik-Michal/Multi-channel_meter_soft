@@ -6,8 +6,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
-#include "em_device.h"      // Critical for EFM32PG23
-#include "em_msc.h"         // MSC functions
+#include "em_device.h"
+#include "em_msc.h"
 #include "em_cmu.h"
 #include "modbus_rtu_slave.h"
 
@@ -18,7 +18,7 @@ typedef struct __attribute__((packed)) {
     uint16_t Modbus_baud;
     uint16_t HWID;
     uint16_t SWID;
-    uint8_t _padding[6];  // tylko jeśli potrzebujesz dopełnić do 32-bit
+    uint8_t _padding[6];
     uint16_t CRC;
 } Internal_data_struct;
 #define CRC_OFFSET  (sizeof(Internal_data_struct) - sizeof(uint16_t))
@@ -31,7 +31,6 @@ uint32_t read_bytes_from_user_flash(uint32_t address, uint8_t *data, uint32_t da
 MSC_Status_TypeDef  write_user_flash(uint8_t *data, uint32_t bytes_amount);
 Internal_data_struct * flash_data_struct_getter(void);
 
-// Nowe funkcje do kalibracji
 void set_adc_calibration(int16_t *offset_mv, uint16_t *gain);
 void set_modbus_settings(uint16_t id, uint16_t baud);
 
